@@ -1,0 +1,60 @@
+To make sure that our results can be used for future analysis, we have repeated the generation process several times. Here is an overview of how we produced them, and how to repeat it.
+
+Firstly, the full automation of the process is quite hard, because we are working with different environments through the process, and some specific steps have been done "by hand" to prepare the environment before launching the compilations.
+
+The first thing we need is to retrieve the .config file that we want from the database.
+Using a python script, you need to have installed the corresponding libraries (MySQLdb, bz2)
+
+The script retrieve_config_from_cid.py has been used to get the .config files from the database. The choice of the files is hardcoded in lists of cids in the script...
+You then have to copy these files to igrida, I used scp but would be nice to do it with a script too...
+
+To compile our results, we also need an image with python3 and docker installed, for the vm. We have used an Ubuntu 18.04 image.
+
+-------------------------------- Process ---------------------------------
+
+List of the files and their location, on Igrida side:
+
+- In ~/ :
+	- oarscript.sh
+	- launch_compilation.sh
+
+- In /temp_dd/igrida-fs1/psaffray/input_files/ : 
+	- a 'configs' folder where all the .configs will be stored
+	- time_eval.sh
+	
+- In the image :
+	- launch_make.sh for "native" make
+	- launch_test.sh for using tuxml
+
+Scripts' description and workflow : 
+
+1) oar_script.sh <number_of_jobs> "tuxml"(Optional):
+
+The script will ask for the specified number of jobs on the 'bermuda' cluster and will run launch_compilations.sh on them. With "tuxml" as 2nd parameter it will use kernel_generator to make the kernel. Otherwise it will use the 'native' method.
+
+2) launch_compilations.sh :
+
+The script contains the OAR directives that will decide which nodes you will have access to. We have set those rules to have at least 8 cores per job, on a single node. It is important that each job has access to the same resources since our measures are about the execution times.
+This script's only goal is to launch the vm and run a script on it : 
+	- launch_make.sh in the case of doing compilations with the "native" method
+	- launch_test.sh in the case of using tuxml
+	
+3) launch_make.sh :
+
+This script creates docker containers with the 'tuxml/tuxml:dev-v4.15' image that contains the 4.15 linux kernel source files.
+The containers are launched with the --mount option, which allows us to mount, inside the containers, a folder of the host's filesystem. In our case, the path /mnt/temp_dd/igrida-fs1/psaffray/input_files/ will be mounted inside the containers at /TuxML/mydir/
+In this way, we can access the .config files that we have previously placed on host, and we can also write our results directly on host.
+So the script will basically launch, sequentially, one docker container for each config file it finds in the specified directory, and run time_eval.sh in each of these containers.
+
+3b) launch_test.sh :
+
+The script will run kernel_generator with each .config file of the 'configs' folder.
+
+4) time_eval.sh :
+This script copies the file given in parameter to the folder of the linux sources.
+Then it runs 'time make -j$(nproc)' to measure the time of compilation, and retrieves the kernel size using 'ls -l vmlinux'.
+Finally it writes these results in the "results_$OAR_JOB_ID.txt" file shared between container and host.
+
+
+
+
