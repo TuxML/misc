@@ -11,23 +11,29 @@ Steps :
 	/!\ For this step you'll need the kernel sources and place the scripts 'mutate_configs.py' and 'check_sample.py' there.
 	Using 'mutate_configs.py' we manage to change the value of the desired option(s) by using a kernel-source integrated script : scripts/config.
 	It then checks that only our option(s) have changed using 'make olddefconfig' and compares the two files we have.
+	The results of the diffconfig is stored in 'diffs.txt' for each .config we produced
 	
 2b) Choose the .config files that only differ from originals by our chosen options, and select 100 from them.
 	Just run check_sample.py
+	It will parse the 'diffs.txt' file and select 100 of the .config that did not change when executing 'make olddefconfig', which means that these files are "valid".
 
-3) After doing this, we now have our ready-to-compile .config files in the 'sample_configs' folder. Copy the folder's content on the grid (e.g /temp_dd/igrida-fs1/psaffrau/input_files/configs/).
+3) After doing this, we now have our ready-to-compile .config files in the 'sample_configs' folder. Copy the folder's content on the grid (e.g /temp_dd/igrida-fs1/psaffray/input_files/configs/).
 
 4) Compile !
 	Using tuxml, we compile our mutated .config which sends the results to database.
 	For the moment we have done serialized compilations using one single node, but the objective is to parallelize the task, in order to check several options and do it faster.
+	Edit : The version on Mon. 29, July should work in parallel.
+	Edit2 : After some tests, it works well	
+> When the environment is ready (i.e. .config have been placed in /temp_dd/igrida-fs1/psaffray/input_files/configs/) :
+> ~/oar_script.sh X tuxml
 	
 5) Comparing the size
 	Using a script 'get_cid_per_config.py' on the grid, we manage to get the association between the cid in the old database and the cid of the associated mutated .config compilation in the new database.
 	This script uses the output files of the jobs on igrida to find which <old-cid-mutated>.config has been sent with which cid.
-	(not ready for parallelized jobs yet)
+	This will print the list of all the associations found when parsing the logs.
+	Then it will clean the folders and move the yet uncompiled .config to the original directory configs/, and remove the content of distrib/.
 
-6) Dataframe ! 
-	Using 'get_same_configs_from_db.ipynb' we are now able to compute the size difference between before and after the option(s) manipulation, and store the values in a dataframe.
-
-
+6) Produce dataframe
+	Using 'produce_df_size_difference.ipynb' we are now able to compute the size difference between before and after the option(s) manipulation, and store the values in a dataframe.
+	path=/home/psaffray/TuxML/misc/analysis
 
